@@ -1,0 +1,62 @@
+cmake_minimum_required(VERSION 3.10)
+project(OpenGL_MultiExe)
+
+find_package(OpenGL REQUIRED)
+
+# пути к твоим зависимостям (подправь, если они у тебя в другом месте)
+set(DEPS_DIR ${CMAKE_SOURCE_DIR}/dependencies)
+set(DEPS_INCLUDE ${DEPS_DIR}/include)
+set(GLFW_LIB ${DEPS_DIR}/libs/GLFW/lib/glfw3.lib)
+set(GLAD_SRC ${DEPS_DIR}/src/glad.c)
+
+set(FREEGLUT_LIB
+    optimized ${DEPS_DIR}/libs/freeglut/x64/freeglut.lib
+    debug     ${DEPS_DIR}/libs/freeglut/x64/freeglut.lib
+)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+# общие либы
+set(COMMON_LIBS
+    ${GLFW_LIB}
+    ${FREEGLUT_LIB}
+    OpenGL::GL
+    opengl32
+    gdi32
+    user32
+    kernel32
+)
+
+# функция для добавления exe с общими настройками
+function(add_opengl_exe target source)
+    add_executable(${target} ${source} ${GLAD_SRC})
+    target_include_directories(${target} PRIVATE ${DEPS_INCLUDE})
+    target_link_libraries(${target} PRIVATE ${COMMON_LIBS})
+    set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+endfunction()
+
+# ----------------- flappy_whale -----------------
+add_opengl_exe(flappy_whale ${CMAKE_SOURCE_DIR}/src/flappy_whale.cpp)
+
+
+# копируем нужные DLL рядом с exe (freeglut dll)
+add_custom_command(TARGET flappy_whale POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${DEPS_DIR}/bin/freeglut.dll"
+        $<TARGET_FILE_DIR:flappy_whale>
+)
+
+# копируем glb файлы рядом с exe (предполагается, что .glb в корне проекта)
+add_custom_command(TARGET flappy_whale POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/cute_whale.glb"
+        $<TARGET_FILE_DIR:flappy_whale>/cute_whale.glb
+)
+add_custom_command(TARGET flappy_whale POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/low-poly_stalactite.glb"
+        $<TARGET_FILE_DIR:flappy_whale>/low-poly_stalactite.glb
+)
+
+# если tiny_gltf.h у тебя лежит в DEPS_INCLUDE — всё готово. Иначе добавь include-путь.
